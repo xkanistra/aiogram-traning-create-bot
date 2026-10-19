@@ -1,8 +1,6 @@
 # Создаем интерфейс для БД
 from abc import ABC, abstractmethod
 
-from bot.domain.order_state import OrderState
-
 
 class Storage(ABC):
     @abstractmethod
@@ -18,7 +16,7 @@ class Storage(ABC):
     async def clear_user_state_and_order(self, telegram_id: int) -> None: ...
 
     @abstractmethod
-    async def update_user_state(self, telegram_id: int, state: OrderState) -> None: ...
+    async def update_user_state(self, telegram_id: int, state: str) -> None: ...
 
     @abstractmethod
     async def get_user(self, telegram_id: int) -> dict | None: ...

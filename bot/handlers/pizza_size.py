@@ -1,96 +1,38 @@
-# Хендлер обрабатывает нажатие выбора размера пиццы
+# Хендлер обрабатывает нажатие выбора пиццы
+from aiogram import Router
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery
 
-import json
+from bot.keyboards.pizza_kb import PizzaMenuCallback, get_pizza_size_menu
 
-import httpx
+# from bot.infrastructure.storage_postgres import StoragePostgres
+from bot.states.order import OrderState
 
-from bot.domain.messenger import Messenger
-from bot.domain.order_state import OrderState
-from bot.domain.storage import Storage
-from bot.handlers.handler import Handler, HandlerStatus
+# Создаем роутер для файла
+router = Router()
 
 
-class PizzaSize(Handler):
-    def can_handle(
-        self,
-        update: dict,
-        state: OrderState,
-        order_json: dict,
-        storage: Storage,
-        messenger: Messenger,
-    ) -> bool:
-        # Если нету callback в update, вернуть False
-        if "callback_query" not in update:
-            return False
+@router.callback_query(OrderState.wait_for_pizza_name, PizzaMenuCallback.filter())
+async def pizza_size_handler(
+    callback: CallbackQuery, callback_data: PizzaMenuCallback, state: FSMContext
+) -> None:
+    name_mapping = {
+        "margherita": "Маргарита",
+        "pepperoni": "Пепперони",
+        "quatro_stagioni": "Четыре сыра",
+        "capricciosa": "Капричоза",
+        "diavola": "Дьявола",
+        "prosciutto": "Прошутто",
+    }
 
-        # Если состояние из которого пришел callback, состояние достает dispatch из БД
-        # не равен выбору названия пиццы вернуть False
-        if state != OrderState.WAIT_FOR_PIZZA_SIZE:
-            return False
+    pizza_name = name_mapping.get(callback_data.name, "Не выбрана")
 
-        # Достаем данные о пиццах, в дате будет название из callback_data
-        # в message_start.py
-        callback_data = update["callback_query"]["data"]
-        return callback_data.startswith("size_")
+    await state.update_data(pizza_name=pizza_name)
+    await state.set_state(OrderState.wait_for_pizza_size)
 
-    async def handle(
-        self,
-        update: dict,
-        state: OrderState,
-        order_json: dict,
-        storage: Storage,
-        messenger: Messenger,
-    ) -> HandlerStatus:
-        # Достаем telegram_id и callback_data из update. Они точно есть т.к can_handle это проверяет
-        telegram_id = update["callback_query"]["from"]["id"]
-        chat_id = update["callback_query"]["message"]["chat"]["id"]
-        message_id = update["callback_query"]["message"]["message_id"]
+    await callback.answer()
 
-        callback_data = update["callback_query"]["data"]
-
-        size_mapping = {
-            "size_small": "Маленькая (25см)",
-            "size_medium": "Средняя (30см)",
-            "size_large": "Большая (35см)",
-            "size_xl": "Очень большая (40см)",
-        }
-
-        pizza_size = size_mapping.get(callback_data)
-        order_json["pizza_size"] = pizza_size
-
-        await storage.update_user_order_json(telegram_id, order_json)
-        await storage.update_user_state(telegram_id, OrderState.WAIT_FOR_DRINKS)
-
-        try:
-            await messenger.answerCallbackQuery(update["callback_query"]["id"])
-        except httpx.HTTPStatusError:
-            pass
-
-        await messenger.makeRequest(
-            "editMessageText",
-            chat_id=chat_id,
-            message_id=message_id,
-            text="Пожалуйста выберите напиток",
-            reply_markup=json.dumps(
-                {
-                    "inline_keyboard": [
-                        [
-                            {"text": "Coca-Cola", "callback_data": "drink_coca_cola"},
-                            {"text": "Fanta", "callback_data": "drink_fanta"},
-                        ],
-                        [
-                            {"text": "Pepsi", "callback_data": "drink_pepsi"},
-                            {"text": "7-Up", "callback_data": "drink_7_up"},
-                        ],
-                        [
-                            {"text": "Вода", "callback_data": "drink_water"},
-                            {"text": "Без напитка", "callback_data": "drink_none"},
-                        ],
-                        [
-                            {"text": "⬅️ Назад", "callback_data": "back_to_pizza_size"},
-                        ],
-                    ]
-                }
-            ),
-        )
-        return HandlerStatus.STOP
+    await callback.message.edit_text(
+        text=f"🍕Пицца: {pizza_name} \n📐Выберите размер пиццы:",
+        reply_markup=get_pizza_size_menu(),
+    )

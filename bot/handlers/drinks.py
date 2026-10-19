@@ -1,6 +1,5 @@
-# Хендлер обрабатывает нажатие выбора пиццы
+# Хендлер обрабатывает нажатие выбора размера пиццы
 
-import asyncio
 import json
 
 import httpx
@@ -11,7 +10,7 @@ from bot.domain.storage import Storage
 from bot.handlers.handler import Handler, HandlerStatus
 
 
-class PizzaSelection(Handler):
+class PizzaSize(Handler):
     def can_handle(
         self,
         update: dict,
@@ -26,13 +25,13 @@ class PizzaSelection(Handler):
 
         # Если состояние из которого пришел callback, состояние достает dispatch из БД
         # не равен выбору названия пиццы вернуть False
-        if state != OrderState.WAIT_FOR_PIZZA_NAME:
+        if state != OrderState.WAIT_FOR_PIZZA_SIZE:
             return False
 
         # Достаем данные о пиццах, в дате будет название из callback_data
         # в message_start.py
         callback_data = update["callback_query"]["data"]
-        return callback_data.startswith("pizza_")
+        return callback_data.startswith("size_")
 
     async def handle(
         self,
@@ -49,28 +48,20 @@ class PizzaSelection(Handler):
 
         callback_data = update["callback_query"]["data"]
 
-        # Добавляем маппинг по имени для красивого вывода в БД
-        name_mapping = {
-            "pizza_margherita": "Маргарита",
-            "pizza_pepperoni": "Пепперони",
-            "pizza_quatro_stagioni": "Четыре сыра",
-            "pizza_capricciosa": "Капричоза",
-            "pizza_diavola": "Дьявола",
-            "pizza_prosciutto": "Прошутто",
+        size_mapping = {
+            "size_small": "Маленькая (25см)",
+            "size_medium": "Средняя (30см)",
+            "size_large": "Большая (35см)",
+            "size_xl": "Очень большая (40см)",
         }
 
-        # Добавляем переменные для явного четния кода
-        pizza_name = name_mapping.get(callback_data)
-        order_json["pizza_name"] = pizza_name
+        pizza_size = size_mapping.get(callback_data)
+        order_json["pizza_size"] = pizza_size
 
-        # Блок обновляет состояние и добавляет название заказываемой пиццы
-        await asyncio.gather(
-            storage.update_user_order_json(telegram_id, order_json),
-            storage.update_user_state(telegram_id, OrderState.WAIT_FOR_PIZZA_SIZE),
-        )
+        await storage.update_user_order_json(telegram_id, order_json)
+        await storage.update_user_state(telegram_id, OrderState.WAIT_FOR_DRINKS)
 
         try:
-            # Данная строка убирает визуальное колесо загрузки
             await messenger.answerCallbackQuery(update["callback_query"]["id"])
         except httpx.HTTPStatusError:
             pass
@@ -79,23 +70,24 @@ class PizzaSelection(Handler):
             "editMessageText",
             chat_id=chat_id,
             message_id=message_id,
-            text="Пожалуйста выберите размер пиццы",
+            text="Пожалуйста выберите напиток",
             reply_markup=json.dumps(
                 {
                     "inline_keyboard": [
                         [
-                            {"text": "Маленькая (25см)", "callback_data": "size_small"},
-                            {"text": "Средняя (30см)", "callback_data": "size_medium"},
+                            {"text": "Coca-Cola", "callback_data": "drink_coca_cola"},
+                            {"text": "Fanta", "callback_data": "drink_fanta"},
                         ],
                         [
-                            {"text": "Большая (35см)", "callback_data": "size_large"},
-                            {
-                                "text": "Очень большая (40см)",
-                                "callback_data": "size_xl",
-                            },
+                            {"text": "Pepsi", "callback_data": "drink_pepsi"},
+                            {"text": "7-Up", "callback_data": "drink_7_up"},
                         ],
                         [
-                            {"text": "⬅️ Назад", "callback_data": "back_to_pizza_name"},
+                            {"text": "Вода", "callback_data": "drink_water"},
+                            {"text": "Без напитка", "callback_data": "drink_none"},
+                        ],
+                        [
+                            {"text": "⬅️ Назад", "callback_data": "back_to_pizza_size"},
                         ],
                     ]
                 }
