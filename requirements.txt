@@ -1,0 +1,8 @@
+python-dotenv
+black
+ruff
+pytest
+pytest-asyncio
+asyncpg
+httpx
+aiogram

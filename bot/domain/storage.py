@@ -1,0 +1,35 @@
+# Создаем интерфейс для БД
+from abc import ABC, abstractmethod
+
+from bot.domain.order_state import OrderState
+
+
+class Storage(ABC):
+    @abstractmethod
+    async def recreate_database(self) -> None: ...
+
+    @abstractmethod
+    async def persist_updates(self, updates: list) -> None: ...
+
+    @abstractmethod
+    async def ensure_users_exists(self, telegram_id: int) -> None: ...
+
+    @abstractmethod
+    async def clear_user_state_and_order(self, telegram_id: int) -> None: ...
+
+    @abstractmethod
+    async def update_user_state(self, telegram_id: int, state: OrderState) -> None: ...
+
+    @abstractmethod
+    async def get_user(self, telegram_id: int) -> dict | None: ...
+
+    @abstractmethod
+    async def update_user_order_json(
+        self, telegram_id: int, order_json: str
+    ) -> None: ...
+
+    @abstractmethod
+    async def get_order_json(self, telegram_id: int) -> dict: ...
+
+    @abstractmethod
+    async def init_database(self) -> None: ...
