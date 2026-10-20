@@ -54,8 +54,9 @@
 
 ### День 2 (20 Октября 2026).
 * **Что сделано:**
-    * .
+    * Коротко потом допишу. Исправлено добавление юзера в бд, состояния для перехода между клавиатурами, написан кастомный ФСМ для БД. Заменен middleware на outer_middleware
         * **Измение кодовой базы:**
             * **bot/main.py:**
             * **bot/keyboards/pizza_kb:**
             * **bot/infrastructure/fsm_postgres_storage.py:**
+            * **bot/handlers/drinks.py:**

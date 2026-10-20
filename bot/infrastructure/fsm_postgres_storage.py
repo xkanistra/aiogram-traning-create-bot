@@ -11,19 +11,9 @@ class PostgresFSMStorage(BaseStorage):
     def __init__(self, storage: StoragePostgres) -> None:
         self.storage = storage
 
-    async def set_state(self, key: StorageKey, state: StateType = None) -> None:
-        # Переводим объект State в обычную строку, которую поймет Postgres
-        state_str = state.state if state else None
-
-        # ОБЯЗАТЕЛЬНО проверяем, идет ли запрос в БД:
-        print(
-            f"📡 [FSM ЗАПИСЬ СТЕЙТА] Юзер {key.user_id} -> Устанавливаем: {state_str}"
-        )
-
-        # Вызываем ваш метод обновления стейта
-        await self.storage.update_user_state(key.user_id, state_str)
-
     async def get_state(self, key: StorageKey) -> str | None:
+        await self.storage.ensure_users_exists(key.user_id)
+
         # Получаем пользователя из БД
         user = await self.storage.get_user(key.user_id)
         state_from_db = user.get("state") if user else None
@@ -32,7 +22,21 @@ class PostgresFSMStorage(BaseStorage):
         )  # ДОБАВИТЬ ПРИНТ
         return state_from_db
 
+    async def set_state(self, key: StorageKey, state: StateType = None) -> None:
+        state_str = state.state if state else None
+        # Гарантируем наличие пользователя перед любым UPDATE
+        await self.storage.ensure_users_exists(key.user_id)
+
+        print(
+            f"📡 [FSM ЗАПИСЬ СТЕЙТА] Юзер {key.user_id} -> Устанавливаем: {state_str}"
+        )
+
+        # Вызываем ваш метод обновления стейта
+        await self.storage.update_user_state(key.user_id, state_str)
+
     async def set_data(self, key: StorageKey, data: dict[str, Any]) -> None:
+        # Гарантируем наличие пользователя перед сохранением словаря заказа
+        await self.storage.ensure_users_exists(key.user_id)
         # Сохраняем словарь заказа в БД
         await self.storage.update_user_order_json(key.user_id, data)
 
