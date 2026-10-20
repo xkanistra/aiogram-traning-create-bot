@@ -12,16 +12,25 @@ class PostgresFSMStorage(BaseStorage):
         self.storage = storage
 
     async def set_state(self, key: StorageKey, state: StateType = None) -> None:
-        # Получаем состояние как строку если она есть, иначе принимаем её как пустое значение
+        # Переводим объект State в обычную строку, которую поймет Postgres
         state_str = state.state if state else None
 
-        # Обновляем состояние пользователя, передавая функции telegram_id(key.user_id) и состояние
+        # ОБЯЗАТЕЛЬНО проверяем, идет ли запрос в БД:
+        print(
+            f"📡 [FSM ЗАПИСЬ СТЕЙТА] Юзер {key.user_id} -> Устанавливаем: {state_str}"
+        )
+
+        # Вызываем ваш метод обновления стейта
         await self.storage.update_user_state(key.user_id, state_str)
 
     async def get_state(self, key: StorageKey) -> str | None:
         # Получаем пользователя из БД
         user = await self.storage.get_user(key.user_id)
-        return user.get("state") if user else None
+        state_from_db = user.get("state") if user else None
+        print(
+            f"🔍 [FSM ЧТЕНИЕ] Юзер {key.user_id} -> Из БД пришло: {state_from_db}"
+        )  # ДОБАВИТЬ ПРИНТ
+        return state_from_db
 
     async def set_data(self, key: StorageKey, data: dict[str, Any]) -> None:
         # Сохраняем словарь заказа в БД

@@ -18,10 +18,11 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
-from infrastructure.fsm_postgres_storage import PostgresFSMStorage
+from bot.infrastructure.fsm_postgres_storage import PostgresFSMStorage
 
 from bot.handlers.message_start import router as start_router
 from bot.handlers.pizza_size import router as pizza_size_router
+from bot.handlers.drinks import router as drinks_router
 from bot.infrastructure.storage_postgres import StoragePostgres
 from bot.middlewares.db_middleware import DatabaseMiddleware
 
@@ -52,6 +53,7 @@ async def main():
     dispatcher.update.middleware(DatabaseMiddleware(storage))
     dispatcher.include_router(start_router)
     dispatcher.include_router(pizza_size_router)
+    dispatcher.include_router(drinks_router)
     logger.info("Бот успешно запущен и готов к работе.")
 
     try:

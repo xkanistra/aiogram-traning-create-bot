@@ -11,6 +11,10 @@ class PizzaSizeCallback(CallbackData, prefix="size"):
     name: str
 
 
+class DrinksCallback(CallbackData, prefix="drink"):
+    name: str
+
+
 def get_pizza_name_menu() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
@@ -34,19 +38,36 @@ def get_pizza_size_menu() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.button(
-        text="Маленькая (25см)", callback_data=PizzaMenuCallback(name="small")
+        text="Маленькая (25см)", callback_data=PizzaSizeCallback(name="small")
     )
     builder.button(
-        text="Средняя (30см)", callback_data=PizzaMenuCallback(name="medium")
+        text="Средняя (30см)", callback_data=PizzaSizeCallback(name="medium")
     )
-    builder.button(text="Большая (35см)", callback_data=PizzaMenuCallback(name="large"))
+    builder.button(text="Большая (35см)", callback_data=PizzaSizeCallback(name="large"))
     builder.button(
-        text="Очень большая (40см)", callback_data=PizzaMenuCallback(name="xl")
+        text="Очень большая (40см)", callback_data=PizzaSizeCallback(name="xl")
     )
     builder.button(
-        text="⬅️ Назад", callback_data=PizzaMenuCallback(name="back_to_pizza_name")
+        text="⬅️ Назад", callback_data=PizzaSizeCallback(name="back_to_pizza_name")
     )
 
     # Размещаем inline клавиши размеров по 2 в ряд и назад отдельно
     builder.adjust(2, 2, 1)
+    return builder.as_markup()
+
+
+def get_drinks_menu() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(text="Coca-Cola", callback_data=DrinksCallback(name="coca_cola"))
+    builder.button(text="Fanta", callback_data=DrinksCallback(name="fanta"))
+    builder.button(text="Pepsi", callback_data=DrinksCallback(name="pepsi"))
+    builder.button(text="7-Up", callback_data=DrinksCallback(name="7-up"))
+    builder.button(text="Вода", callback_data=DrinksCallback(name="water"))
+    builder.button(text="Без напитка", callback_data=DrinksCallback(name="none"))
+    builder.button(
+        text="⬅️ Назад", callback_data=DrinksCallback(name="back_to_pizza_size")
+    )
+
+    builder.adjust(2, 2, 2, 1)
     return builder.as_markup()

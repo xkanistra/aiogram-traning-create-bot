@@ -51,4 +51,11 @@
             * Устанавливает декоратор роутера принимающего callback_query с состоянием предыдущим пользователя и ключами из фермы: `@router.callback_query(OrderState.wait_for_pizza_name, PizzaMenuCallback.filter())`.
             * Создаем карту названий пиццы для более простого получения данных о выборе в `name_mapping` и `pizza_name = name_mapping.get(callback_data.name, "Не выбрана")`.
             * Так же обновляем состояние пользователя и выводим клавиатуру.
-            
+
+### День 2 (20 Октября 2026).
+* **Что сделано:**
+    * .
+        * **Измение кодовой базы:**
+            * **bot/main.py:**
+            * **bot/keyboards/pizza_kb:**
+            * **bot/infrastructure/fsm_postgres_storage.py:**
