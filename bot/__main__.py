@@ -18,6 +18,8 @@ logging.basicConfig(
 
 logger = logging.getLogger(__name__)
 
+from infrastructure.fsm_postgres_storage import PostgresFSMStorage
+
 from bot.handlers.message_start import router as start_router
 from bot.handlers.pizza_size import router as pizza_size_router
 from bot.infrastructure.storage_postgres import StoragePostgres
@@ -37,14 +39,15 @@ async def main():
     bot_token = getenv("BOT_TOKEN")
     if not bot_token:
         raise ValueError("Переменная окружения BOT_TOKEN не установленна.")
-
     bot = Bot(token=bot_token)
-    dispatcher = Dispatcher()
 
     logger.info("Инициализация инфраструктуры...")
 
     storage = StoragePostgres()
     pool = await storage._get_pool()
+    postgres_fsm = PostgresFSMStorage(storage)
+
+    dispatcher = Dispatcher(storage=postgres_fsm)
 
     dispatcher.update.middleware(DatabaseMiddleware(storage))
     dispatcher.include_router(start_router)

@@ -20,7 +20,12 @@ class DatabaseMiddleware(BaseMiddleware):
     ):
         # Вытаскиваем автоматически id пользователя из любого типа события
         telegram_id = None
-        if isinstance(event, Message) and event.from_user or isinstance(event, CallbackQuery) and event.from_user:
+        if (
+            isinstance(event, Message)
+            and event.from_user
+            or isinstance(event, CallbackQuery)
+            and event.from_user
+        ):
             telegram_id = event.from_user.id
 
         # Если id получено, то гарантом добавляем пользователя в БД
