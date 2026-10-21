@@ -14,6 +14,8 @@ router = Router()
 async def drinks_handler(
     callback: CallbackQuery, callback_data: PizzaSizeCallback, state: FSMContext
 ) -> None:
+    data = await state.get_data()
+    pizza_name = data.get("pizza_name", "Выбранная пицца")
     pizza_size = PIZZA_SIZE_MAPPING.get(callback_data.name, "Не выбран")
 
     await state.update_data(pizza_size=pizza_size)
@@ -22,6 +24,6 @@ async def drinks_handler(
     await callback.answer()
 
     await callback.message.edit_text(
-        text=f"📐Размер: {pizza_size} принят!\n🥤Выберите пожалуйста напиток:",
+        text=f"🍕 Пицца: {pizza_name}\n📐Размер: {pizza_size}\n🥤Выберите пожалуйста напиток:",
         reply_markup=get_drinks_menu(),
     )
