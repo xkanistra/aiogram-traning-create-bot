@@ -4,7 +4,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
 from bot.keyboards.pizza_kb import PizzaMenuCallback, get_pizza_size_menu
-
+from bot.domain.pizza_mapping import PIZZA_NAME_MAPPING
 # from bot.infrastructure.storage_postgres import StoragePostgres
 from bot.states.order import OrderState
 
@@ -16,16 +16,7 @@ router = Router()
 async def pizza_size_handler(
     callback: CallbackQuery, callback_data: PizzaMenuCallback, state: FSMContext
 ) -> None:
-    name_mapping = {
-        "margherita": "Маргарита",
-        "pepperoni": "Пепперони",
-        "quatro_stagioni": "Четыре сыра",
-        "capricciosa": "Капричоза",
-        "diavola": "Дьявола",
-        "prosciutto": "Прошутто",
-    }
-
-    pizza_name = name_mapping.get(callback_data.name, "Не выбрана")
+    pizza_name = PIZZA_NAME_MAPPING.get(callback_data.name, "Не выбрана")
 
     await state.update_data(pizza_name=pizza_name)
     await state.set_state(OrderState.wait_for_pizza_size)
