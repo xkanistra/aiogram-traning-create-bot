@@ -1,11 +1,15 @@
 # Хендлер обрабатывает нажатие кнопки назад
-from os import name
 
-from aiogram import Router, F
+from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
-from bot.keyboards.pizza_kb import DrinksCallback, PizzaSizeCallback, get_pizza_name_menu, get_pizza_size_menu
+from bot.keyboards.pizza_kb import (
+    DrinksCallback,
+    PizzaSizeCallback,
+    get_pizza_name_menu,
+    get_pizza_size_menu,
+)
 from bot.states.order import OrderState
 
 router = Router()
@@ -25,11 +29,14 @@ async def back_to_pizza_name_handler(
         reply_markup=get_pizza_name_menu(),
     )
 
+
 @router.callback_query(
     OrderState.wait_for_drinks,
     DrinksCallback.filter(F.name == "back_to_pizza_size"),
 )
-async def back_to_pizza_size_handler(callback: CallbackQuery, state: FSMContext) -> None:
+async def back_to_pizza_size_handler(
+    callback: CallbackQuery, state: FSMContext
+) -> None:
     await state.set_state(OrderState.wait_for_pizza_size)
     await callback.answer()
 
@@ -38,5 +45,5 @@ async def back_to_pizza_size_handler(callback: CallbackQuery, state: FSMContext)
 
     await callback.message.edit_text(
         text=f"Вы вернулись назад.\n🍕 Пицца: {pizza_name}\n📐 Выберите размер пиццы:",
-        reply_markup=get_pizza_size_menu()
+        reply_markup=get_pizza_size_menu(),
     )
