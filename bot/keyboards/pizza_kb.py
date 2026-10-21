@@ -19,6 +19,10 @@ class OrderCallback(CallbackData, prefix="order"):
     name: str
 
 
+class CancelOrderCallback(CallbackData, prefix="new"):
+    name: str
+
+
 def get_pizza_name_menu() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
@@ -87,4 +91,15 @@ def get_wait_order_menu() -> InlineKeyboardMarkup:
     builder.button(text="⬅️ Назад", callback_data=OrderCallback(name="back_to_drinks"))
 
     builder.adjust(2, 1)
+    return builder.as_markup()
+
+
+def get_new_order_menu() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+
+    builder.button(
+        text="Сделать новый заказ.", callback_data=CancelOrderCallback(name="order")
+    )
+
+    builder.adjust(1)
     return builder.as_markup()
