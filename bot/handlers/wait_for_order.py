@@ -1,105 +1,29 @@
 # Хендлер подтверждения заказа
+from aiogram import Router
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery
 
-import json
+from bot.domain.pizza_mapping import DRINKS_MAPPING
+from bot.keyboards.pizza_kb import DrinksCallback, get_wait_order_menu
+from bot.states.order import OrderState
 
-import httpx
-
-from bot.domain.messenger import Messenger
-from bot.domain.order_state import OrderState
-from bot.domain.storage import Storage
-from bot.handlers.handler import Handler, HandlerStatus
+router = Router()
 
 
-class WaitForOrder(Handler):
-    def can_handle(
-        self,
-        update: dict,
-        state: OrderState,
-        order_json: dict,
-        storage: Storage,
-        messenger: Messenger,
-    ) -> bool:
-        if "callback_query" not in update:
-            return False
+@router.callback_query(OrderState.wait_for_drinks, DrinksCallback.filter())
+async def wait_for_order_handler(
+    callback: CallbackQuery, callback_data: DrinksCallback, state: FSMContext
+) -> None:
+    data = await state.get_data()
+    pizza_name = data.get("pizza_name", "Не выбрана")
+    pizza_size = data.get("pizza_size", "Не выбран")
+    drinks = DRINKS_MAPPING.get(callback_data.name, "Не выбран")
 
-        if state != OrderState.WAIT_FOR_DRINKS:
-            return False
+    await state.update_data(drinks=drinks)
+    await state.set_state(OrderState.wait_for_order)
+    await callback.answer()
 
-        callback_data = update["callback_query"]["data"]
-        return callback_data.startswith("drink_")
-
-    async def handle(
-        self,
-        update: dict,
-        state: OrderState,
-        order_json: dict,
-        storage: Storage,
-        messenger: Messenger,
-    ) -> HandlerStatus:
-        telegram_id = update["callback_query"]["from"]["id"]
-        chat_id = update["callback_query"]["message"]["chat"]["id"]
-        message_id = update["callback_query"]["message"]["message_id"]
-
-        callback_data = update["callback_query"]["data"]
-
-        # Установка дефолтных состояний на случай краша БД
-        pizza_name = "Не выбрана"
-        pizza_size = "Не выбран"
-        drink_name = "Не выбран"
-
-        # Берем данные о заказе
-        order = await storage.get_order_json(telegram_id)
-
-        # Записываем данные о заказе для дальнейшего вывода
-        if order:
-            pizza_name = order.get("pizza_name", "Не выбрана")
-            pizza_size = order.get("pizza_size", "Не выбран")
-            drink_name = order.get("drink_name", "Не выбран")
-
-        drink_mapping = {
-            "drink_coca_cola": "Coca-Cola",
-            "drink_fanta": "Fanta",
-            "drink_pepsi": "Pepsi",
-            "drink_7_up": "7-Up",
-            "drink_water": "Вода",
-            "drink_none": "Без напитка",
-        }
-
-        drink_name = drink_mapping.get(callback_data)
-        order_json["drink_name"] = drink_name
-
-        await storage.update_user_order_json(telegram_id, order_json)
-        await storage.update_user_state(telegram_id, OrderState.WAIT_FOR_ORDER)
-
-        try:
-            await messenger.answerCallbackQuery(update["callback_query"]["id"])
-        # Перехватываем только ошибки сети Telegram API
-        except httpx.HTTPStatusError:
-            pass
-
-        await messenger.makeRequest(
-            "editMessageText",
-            chat_id=chat_id,
-            message_id=message_id,
-            text=f"Подтвердите ваш заказ:\nПицца: {pizza_name}\nРазмер: {pizza_size}\nНапиток: {drink_name}",
-            reply_markup=json.dumps(
-                {
-                    "inline_keyboard": [
-                        [
-                            {
-                                "text": "✅ Всё верно, заказываю!",
-                                "callback_data": "confirm_order",
-                            },
-                            {
-                                "text": "❌ Отменить заказ",
-                                "callback_data": "cancel_order",
-                            },
-                        ],
-                        [
-                            {"text": "⬅️ Назад", "callback_data": "back_to_drink"},
-                        ],
-                    ]
-                }
-            ),
-        )
-        return HandlerStatus.STOP
+    await callback.message.edit_text(
+        text=f"Подтвердите ваш заказ.\n🍕 Пицца: {pizza_name}\n📐Размер: {pizza_size}\n🥤Напиток:{drinks}.",
+        reply_markup=get_wait_order_menu(),
+    )
