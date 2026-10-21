@@ -5,7 +5,7 @@ from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery, Message
 
 from bot.infrastructure.storage_postgres import StoragePostgres
-from bot.keyboards.pizza_kb import get_pizza_name_menu
+from bot.keyboards.pizza_kb import CancelOrderCallback, get_pizza_name_menu
 from bot.states.order import OrderState
 
 # Создаем роутер для файла
@@ -26,7 +26,7 @@ async def command_start(
     )
 
 
-@router.callback_query(F.data == "new_order")
+@router.callback_query(OrderState.order_cancel, CancelOrderCallback.filter())
 async def callback_new_order(callback: CallbackQuery, state: FSMContext) -> None:
     await callback.answer()
 
