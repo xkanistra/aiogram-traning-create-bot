@@ -3,8 +3,9 @@ from aiogram import Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import CallbackQuery
 
-from bot.keyboards.pizza_kb import PizzaMenuCallback, get_pizza_size_menu
 from bot.domain.pizza_mapping import PIZZA_NAME_MAPPING
+from bot.keyboards.pizza_kb import PizzaMenuCallback, get_pizza_size_menu
+
 # from bot.infrastructure.storage_postgres import StoragePostgres
 from bot.states.order import OrderState
 
