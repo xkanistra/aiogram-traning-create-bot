@@ -24,6 +24,7 @@ from bot.handlers.back_to_menu_handler import router as back_to_menu_router
 from bot.handlers.drinks import router as drinks_router
 from bot.handlers.message_start import router as start_router
 from bot.handlers.order_cancel import router as new_order_router
+from bot.handlers.order_cofirm import router as order_confrim
 from bot.handlers.pizza_size import router as pizza_size_router
 from bot.handlers.wait_for_order import router as wait_order_router
 from bot.infrastructure.fsm_postgres_storage import PostgresFSMStorage
@@ -63,6 +64,7 @@ async def main():
         drinks_router,
         wait_order_router,
         new_order_router,
+        order_confrim,
     )
 
     logger.info("Бот успешно запущен и готов к работе.")

@@ -1,141 +1,68 @@
 # Хендлер принимает подтверждение заказа
-import json
+from aiogram import F, Router
+from aiogram.fsm.context import FSMContext
+from aiogram.types import CallbackQuery, LabeledPrice, Message, PreCheckoutQuery
 
-import httpx
+from bot.infrastructure.storage_postgres import StoragePostgres
+from bot.keyboards.pizza_kb import OrderCallback
+from bot.states.order import OrderState
 
-from bot.domain.messenger import Messenger
-from bot.domain.order_state import OrderState
-from bot.domain.storage import Storage
-from bot.handlers.handler import Handler, HandlerStatus
+router = Router()
 
 
-class OrderConfirm(Handler):
-    def can_handle(
-        self,
-        update: dict,
-        state: OrderState,
-        order_json: dict,
-        storage: Storage,
-        messenger: Messenger,
-    ) -> bool:
-        if "callback_query" not in update:
-            return False
+@router.callback_query(OrderState.wait_for_order, OrderCallback.filter(F.name == "pay"))
+async def order_pay_handler(
+    callback: CallbackQuery, callback_data: OrderCallback, state: FSMContext
+) -> None:
+    await callback.answer()
 
-        if state != OrderState.WAIT_FOR_ORDER:
-            return False
+    data = await state.get_data()
+    total_price = data.get("total_price", 0)
+    pizza_name = data.get("pizza_name", "Не выбрана")
+    pizza_size = data.get("pizza_size", "Не выбран")
 
-        callback_data = update["callback_query"]["data"]
-        return callback_data.startswith("confirm_")
+    await state.set_state(OrderState.order_confirm)
 
-    async def handle(
-        self,
-        update: dict,
-        state: OrderState,
-        order_json: dict,
-        storage: Storage,
-        messenger: Messenger,
-    ) -> HandlerStatus:
-        telegram_id = update["callback_query"]["from"]["id"]
-        chat_id = update["callback_query"]["message"]["chat"]["id"]
-        message_id = update["callback_query"]["message"]["message_id"]
+    prices = [
+        LabeledPrice(label=f"Пицца {pizza_name} {pizza_size}", amount=total_price)
+    ]
 
-        await storage.update_user_order_json(telegram_id, order_json)
+    await callback.message.delete()
 
-        try:
-            await messenger.answerCallbackQuery(update["callback_query"]["id"])
-        # Перехватываем только ошибки сети Telegram API
-        except httpx.HTTPStatusError:
-            pass
+    await callback.message.answer_invoice(
+        title="Оплата заказа пиццы",
+        description=f"Оплата корзины на сумму {total_price} ⭐️",
+        payload="stars_pizza_order_internal_payload",
+        provider_token="",
+        currency="XTR",
+        prices=prices,
+        start_parameter="pay",
+    )
 
-        pizza_name = order_json.get("pizza_name", "Пицца")
-        pizza_size = order_json.get("pizza_size", "Не выбран")
-        drink_name = order_json.get("drink_name", "Не выбран")
 
-        pizza_prices = {
-            ## Пока что цены будут в звездах
-            "Маленькая (25см)": 1,  # 20.00 byn
-            "Средняя (30см)": 2,  # 25.00 byn
-            "Большая (35см)": 3,  # 30.00 byn
-            "Очень большая (40см)": 4,  # 40.00 byn
-        }
+@router.pre_checkout_query()
+async def pre_checkout_handler(pre_checkout_query: PreCheckoutQuery) -> None:
+    # Здесь при необходимости можно сделать быстрый SELECT в пул asyncpg на проверку ингредиентов
+    await pre_checkout_query.answer(ok=True)
 
-        drink_price = 1  # 2.00 byn
 
-        total_amount = pizza_prices.get(pizza_size, 1)
+@router.message(F.successful_payment)
+async def successful_payment_handler(
+    message: Message,
+    state: FSMContext,
+    storage: StoragePostgres,
+) -> None:
+    payment_info = message.successful_payment
 
-        if drink_name and drink_name != "Без напитка":
-            total_amount = total_amount + drink_price
+    await storage.clear_user_state_and_order(message.from_user.id)
 
-        prices = [
-            {"label": f"Заказ: Пицца + Напиток {pizza_size}", "amount": total_amount}
-        ]
+    await state.clear()
 
-        # Сжимаем русские слова в короткие латинские коды (байты)
-        size_code = "S"
-        if "Средняя" in pizza_size:
-            size_code = "M"
-        elif "Большая" in pizza_size:
-            size_code = "L"
-        elif "Очень большая" in pizza_size:
-            size_code = "XL"
-
-        drink_code = "none"
-        if "Coca-Cola" in drink_name:
-            drink_code = "cola"
-        elif "Fanta" in drink_name:
-            drink_code = "fanta"
-        elif "Pepsi" in drink_name:
-            drink_code = "pepsi"
-        elif "7-Up" in drink_name:
-            drink_code = "7_up"
-        elif "Вода" in drink_name:
-            drink_code = "water"
-
-        pizza_code = "margherita"
-        if "Пепперони" in pizza_name:
-            pizza_code = "pepperoni"
-        elif "Четыре сыра" in pizza_name:
-            pizza_code = "quatro"
-        elif "Капричоза" in pizza_name:
-            pizza_code = "capricciosa"
-        elif "Дьявола" in pizza_name:
-            pizza_code = "diavola"
-        elif "Прошутто" in pizza_name:
-            pizza_code = "prosciutto"
-
-        order_payload = f"{telegram_id}:{pizza_code}:{size_code}:{drink_code}"
-
-        try:
-            await messenger.makeRequest(
-                "deleteMessage", chat_id=chat_id, message_id=message_id
-            )
-        except httpx.HTTPStatusError:
-            pass
-
-        await messenger.makeRequest(
-            "sendInvoice",
-            chat_id=chat_id,
-            title=f"Заказ №{update['update_id']}",
-            description=f"Пицца {pizza_name}, {pizza_size}. Напиток: {drink_name}. Итого: {total_amount} ⭐",
-            payload=order_payload,
-            provider_token="",  # В дальнейшем подставить токен кассы
-            currency="XTR",  # Валюта ТГ звезды, в дальнешем валюту страны
-            prices=json.dumps(prices),
-            is_flexible=False,
-            reply_markup=json.dumps(
-                {
-                    "inline_keyboard": [
-                        [{"text": "⭐ Оплатить заказ", "pay": True}],  # Кнопка оплаты
-                        [
-                            {
-                                "text": "❌ Отменить и начать сначала",
-                                "callback_data": "new_order",
-                            }
-                        ],
-                    ]
-                }
-            ),
-        )
-        await storage.update_user_state(telegram_id, OrderState.ORDER_CONFIRM),
-
-        return HandlerStatus.STOP
+    await message.answer(
+        text=(
+            "🎉 *Большое спасибо за оплату!*\n\n"
+            f"Списано: {payment_info.total_amount} ⭐️ (Telegram Stars).\n"
+            "Ваш заказ успешно передан на кухню. Начинаем готовить! 🍕"
+        ),
+        parse_mode="Markdown",
+    )

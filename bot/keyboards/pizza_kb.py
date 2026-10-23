@@ -85,12 +85,12 @@ def get_wait_order_menu() -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.button(
-        text="✅Все верно, заказываю.", callback_data=OrderCallback(name="confirm")
+        text="💳Все верно, заказываю.", callback_data=OrderCallback(name="pay")
     )
     builder.button(text="❌Отменить заказ.", callback_data=OrderCallback(name="cancel"))
     builder.button(text="⬅️ Назад", callback_data=OrderCallback(name="back_to_drinks"))
 
-    builder.adjust(2, 1)
+    builder.adjust(1)
     return builder.as_markup()
 
 
