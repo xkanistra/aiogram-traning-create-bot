@@ -1,5 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock
+
 from aiogram.types import Update
+
 from bot.infrastructure.middlewares.updates_logger import UpdateLoggerMiddleware
 from bot.infrastructure.storage_postgres import StoragePostgres
 

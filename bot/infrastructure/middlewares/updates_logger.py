@@ -1,7 +1,9 @@
 import logging
+from collections.abc import Awaitable, Callable
 from os import getenv
-from typing import Any, Awaitable, Callable, Dict
+from typing import Any
 
+import asyncpg
 from aiogram import BaseMiddleware
 from aiogram.types import Update
 from dotenv import load_dotenv
@@ -24,9 +26,9 @@ class UpdateLoggerMiddleware(BaseMiddleware):
 
     async def __call__(
         self,
-        handler: Callable[[Update, Dict[str, Any]], Awaitable[Any]],
+        handler: Callable[[Update, dict[str, Any]], Awaitable[Any]],
         event: Update,
-        data: Dict[str, Any],
+        data: dict[str, Any],
     ) -> Any:
         # Если вкл тестирование пропускаем логгирование в базу
         if not IS_TESTING:
@@ -34,7 +36,7 @@ class UpdateLoggerMiddleware(BaseMiddleware):
                 # model_dump преобразует Pydantic-модель aiogram в чистый dict
                 update_dict = event.model_dump(exclude_none=True)
                 await self.storage.persist_updates([update_dict])
-            except Exception as e:
+            except asyncpg.PostgresError as e:
                 # Если запись не удалась, мы обязательно увидим ошибку в консоли докера!
                 logger.error(
                     f"[MIDDLEWARE ERROR] Не удалось сохранить апдейт в БД: {e}"
