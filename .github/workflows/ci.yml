@@ -33,14 +33,14 @@ jobs:
     # 4. Проверяем стиль кода с помощью Black (--check не меняет файлы, а только проверяет)
     - name: Check code formatting with Black
       run: |
-        black --check bot/ 
+        black --check bot/ tests/
 
     # 5. Проверяем код на ошибки и опечатки с помощью Ruff
     - name: Lint code with Ruff
       run: |
-        ruff check bot/ 
+        ruff check bot/ tests/
 
     # 6. Если код чистый, запускаем юнит-тесты
-    #- name: Run tests with pytest
-      #run: |
-        #pytest
+    - name: Run tests with pytest
+      run: |
+        pytest

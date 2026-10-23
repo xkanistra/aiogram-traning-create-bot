@@ -6,6 +6,9 @@ from os import getenv
 from aiogram import Bot, Dispatcher
 from dotenv import load_dotenv
 
+from bot.handlers.update_database_logger import UpdateDatabaseLogger
+from bot.infrastructure.middlewares.updates_logger import UpdateLoggerMiddleware
+
 load_dotenv(override=True)
 
 logging.basicConfig(
@@ -26,7 +29,7 @@ from bot.handlers.pizza_size import router as pizza_size_router
 from bot.handlers.wait_for_order import router as wait_order_router
 from bot.infrastructure.fsm_postgres_storage import PostgresFSMStorage
 from bot.infrastructure.storage_postgres import StoragePostgres
-from bot.middlewares.db_middleware import DatabaseMiddleware
+from bot.infrastructure.middlewares.db_middleware import DatabaseMiddleware
 
 
 async def main():
@@ -53,6 +56,7 @@ async def main():
     dispatcher = Dispatcher(storage=postgres_fsm)
 
     dispatcher.update.outer_middleware(DatabaseMiddleware(storage))
+    dispatcher.update.outer_middleware(UpdateLoggerMiddleware(storage))
     dispatcher.include_routers(
         start_router,
         back_to_menu_router,
